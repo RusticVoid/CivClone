@@ -1,50 +1,45 @@
+require "utils"
+require "classes.world"
 require "classes.tile"
 require "classes.unit"
+require "classes.player"
+require "classes.buildMenu"
+require "classes.building"
+require "classes.nextPhase"
 
 function love.load()
+    math.randomseed(os.clock())
+    font = love.graphics.getFont()
     mouseX, mouseY = love.mouse.getPosition()
-
-    tileRadius = 50
-    tileInnerRadius = tileRadius/1.16
-    tileSpacing = 2
-    MapSize = 10
-
-    selectedTile = 0
-
-    love.window.setMode(tileRadius*(((MapSize*tileSpacing)/1.34)+1/2), MapSize*tileInnerRadius*tileSpacing+tileRadius/1.34)
     windowWidth, windowHeight = love.graphics.getDimensions()
 
-    tiles = {}
-    for y = 1, MapSize do
-        tiles[y] = {}
-        for x = 1, MapSize do
-            tiles[y][x] = tile.new({x = x, y = y})
-        end
-    end
+    World = world.new({tileRadius = 30, tileSpacing = 2, MapSize = 10})
 
-    tiles[1][1].data.unit = unit.new({x = tiles[1][1].girdX, y = tiles[1][1].girdY})
+    Player = player.new({camSpeed = 50, world = World})
 
+    BuildMenu = buildMenu.new({world = World})
+    NextPhase = nextPhase.new()
+
+    World.tiles[5][5].data.building = building.new({x = World.tiles[5][5].girdX, y = World.tiles[5][5].girdY, world = World, type = "city"})
 end
 
 function love.update(dt)
     mouseX, mouseY = love.mouse.getPosition()
-    for y = 1, MapSize do
-        for x = 1, MapSize do
-            tiles[y][x]:update(dt)
-        end
+    World:update(dt)
+    Player:update(dt)
+    NextPhase:update(dt)
+
+    if (Player.phases[Player.currentPhase] == "done") then
+        Player.currentPhase = NextPhase.nextPhase
     end
 end
 
 function love.draw()
-    for y = 1, MapSize do
-        for x = 1, MapSize do
-            tiles[y][x]:draw()
-        end
-    end
+    World:draw()
+
+    BuildMenu:draw()
+    NextPhase:draw()
 
     love.graphics.setColor(1,1,1)
-    if (not (selectedTile == 0)) then
-        love.graphics.print("X: "..selectedTile.girdX.." Y: "..selectedTile.girdY)
-        love.graphics.print(selectedTile.data.unit, 0, 15)
-    end
+    love.graphics.print(love.timer.getFPS(), 0, font:getHeight())
 end
