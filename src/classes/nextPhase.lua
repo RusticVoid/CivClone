@@ -30,6 +30,7 @@ function nextPhase:update(dt)
 end
 
 function nextPhase:draw()
+    love.graphics.setFont(font)
     if (Player.phases[Player.currentPhase] == "done") then
         self.width = font:getWidth("waiting")
         self.height = font:getHeight()
