@@ -20,24 +20,20 @@ function love.load()
     mouseX, mouseY = love.mouse.getPosition()
     windowWidth, windowHeight = love.graphics.getDimensions()
 
-    World = world.new({tileRadius = 30, tileSpacing = 2, MapSize = 10})
-
     Player = player.new({camSpeed = 50, world = World})
 
     BuildMenu = buildMenu.new({world = World})
     NextPhase = nextPhase.new()
 
-    World.tiles[5][5].data.building = building.new({x = World.tiles[5][5].girdX, y = World.tiles[5][5].girdY, world = World, type = "city"})
-
     menu = "main"
     onlineGame = false
     isHost = false
 
-    playButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = (windowHeight/2)-44, text = "play", code = 'menu = "game"'})
+    playButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = (windowHeight/2)-44, text = "play", code = 'menu = "game" World = world.new({tileRadius = 30, tileSpacing = 2, MapSize = 5})'})
     hostButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = windowHeight/2, text = "host", code = 'menu = "host"'})
     joinButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = hostButton.height+(windowHeight/2), text = "join", code = 'menu = "join"'})
 
-    startGameButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = 22, text = "Start Game", code = 'menu = "game" event = host:service(100) for i = 1, #players do players[i]:send("STARTING GAME") end'})
+    startGameButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = 22, text = "Start Game", code = 'menu = "game" event = host:service(100) for i = 1, #players do players[i]:send("STARTING GAME:"..World.MapSize) end'})
 end
 
 function love.update(dt)
@@ -49,6 +45,7 @@ function love.update(dt)
         joinButton:update(dt)
     elseif (menu == "host") then
         if onlineGame == false then
+            World = world.new({tileRadius = 30, tileSpacing = 2, MapSize = 5})
             host = enet.host_create("localhost:6789")
             onlineGame = true
             isHost = true
@@ -82,10 +79,11 @@ function love.update(dt)
         if event then
             if event.type == "receive" then
                 print("Got message: ", event.data, event.peer)
-                if (event.data == "STARTING GAME") then
+                if (event.data:sub(1, 13) == "STARTING GAME") then
                     menu = "game"
+                    World = world.new({tileRadius = 30, tileSpacing = 2, MapSize = tonumber(event.data:sub(15))})
                 end
-                event.peer:send( "ping" )
+                event.peer:send( "world?" )
             elseif event.type == "connect" then
                 print(event.peer, "connected.")
             elseif event.type == "disconnect" then
@@ -100,17 +98,69 @@ function love.update(dt)
         if (Player.phases[Player.currentPhase] == "done") then
             
         end
-
+        
         if onlineGame == true then
             event = host:service(10)
 
             if event then
                 if event.type == "receive" then
-                    print("Got message: ", event.data, event.peer)
                     if (isHost == true) then
-                        event.peer:send("pong")
+                        if (event.data == "world?") then
+                            tileStringList = ""
+                            for y = 1, World.MapSize do
+                                for x = 1, World.MapSize do
+                                    tileStringList = tileStringList..x..":"..y..":0:0;"
+                                end
+                            end
+                            event.peer:send("MAP;"..tileStringList)
+                        end
                     else
-                        event.peer:send("ping")
+                        if (event.data:sub(1, 3) == "MAP") then
+                            print(event.data:sub(5))
+
+                            netTiles = {}
+                            k = 1
+                            netTiles[k] = ""
+                            for i = 5, #event.data do
+                                netTiles[k] = netTiles[k]..event.data:sub(i, i)
+                                if (event.data:sub(i, i) == ";") then
+                                    k = k + 1
+                                    netTiles[k] = ""
+                                end
+                            end
+                            for i = 1, #netTiles-1 do
+                                local lookingForList = {"x", "y", "unit", "building"}
+                                local lookingFor = 1
+                                local x = ""
+                                local y = ""
+                                local unit = ""
+                                local building = ""
+                                for k = 1, #netTiles[i] do
+                                    if (netTiles[i]:sub(k, k) == ":") then
+                                        lookingFor = lookingFor + 1
+                                    elseif (netTiles[i]:sub(k, k) == ";") then
+                                        break
+                                    else
+                                        if (lookingForList[lookingFor] == "x") then
+                                            x = x..netTiles[i]:sub(k, k)
+                                        end
+                                        if (lookingForList[lookingFor] == "y") then
+                                            y = y..netTiles[i]:sub(k, k)
+                                        end
+                                        if (lookingForList[lookingFor] == "unit") then
+                                            unit = unit..netTiles[i]:sub(k, k)
+                                        end
+                                        if (lookingForList[lookingFor] == "building") then
+                                            building = building..netTiles[i]:sub(k, k)
+                                        end
+                                    end
+                                end
+                                print(x..":"..y..":"..unit..":"..building)
+                                World.tiles[y][x] = tile.new({x = tonumber(x), y = tonumber(y), world = World})
+                            end
+                        else
+                            print("Got message: ", event.data, event.peer)
+                        end
                     end
                 elseif event.type == "disconnect" then
                     print(event.peer, "disconnected.")
