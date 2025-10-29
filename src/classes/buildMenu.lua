@@ -65,6 +65,16 @@ function buildMenu:draw()
                         if love.mouse.isDown(1) then
                             if (Player.selectedTile.data.building == 0) then
                                 Player.selectedTile.data.building = building.new({x = Player.selectedTile.girdX, y = Player.selectedTile.girdY, world = self.world, type = self.buildables[i]})
+                                if onlineGame == true then
+                                    if (isHost == true) then
+                                        for i = 1, #players do 
+                                            sendWorld(players[i].event)
+                                        end
+                                    else
+                                        host:service(10)
+                                        server:send("build:"..Player.selectedTile.girdX..":"..Player.selectedTile.girdY..":"..self.buildables[i]..";")
+                                    end
+                                end
                             end
                         end
                     end
