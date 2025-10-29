@@ -29,6 +29,8 @@ function love.load()
     joinButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = hostButton.height+(windowHeight/2), text = "join", code = 'menu = "join"'})
 
     startGameButton = button.new({color = {1,0,0}, font = love.graphics.newFont("fonts/DePixelKlein.ttf", 40), x = windowWidth/2, y = 22, text = "Start Game", code = 'menu = "game" event = host:service(100) for i = 1, #players do players[i].event.peer:send("STARTING GAME:"..World.MapSize) end'})
+
+    initUnits()
 end
 
 function love.update(dt)
@@ -115,6 +117,8 @@ function love.update(dt)
                             sendWorld(event)
                         elseif (event.data:sub(1, 5) == "build") then
                             decryptBuild(event)
+                        elseif (event.data:sub(1, 4) == "unit") then
+                            decryptUnit(event)
                         elseif (event.data == "done") then
                             for i = 1, #players do 
                                 if (players[i].event.peer == event.peer) then
@@ -133,15 +137,18 @@ function love.update(dt)
                             if ((allPlayersDone == true) and (Player.phases[Player.currentPhase] == "done"))then
                                 for i = 1, #players do 
                                     players[i].event.peer:send("allPlayersDone")
-                                    Player.currentPhase = NextPhase.nextPhase
+                                    players[i].event.peer:send("allPlayersDone")
                                 end
+                                Player.currentPhase = NextPhase.nextPhase
                             end
                         end
                     else
                         if (event.data:sub(1, 3) == "MAP") then
                             decryptWorld(event)
                         elseif (event.data == "allPlayersDone") then
-                            Player.currentPhase = NextPhase.nextPhase
+                            if (Player.phases[Player.currentPhase] == "done") then
+                                Player.currentPhase = NextPhase.nextPhase
+                            end
                         else
                             print("Got message: ", event.data, event.peer)
                         end

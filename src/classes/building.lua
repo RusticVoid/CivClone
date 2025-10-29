@@ -39,7 +39,17 @@ function building:update(dt)
                 self.produced = true
 
                 if (self.world.tiles[self.girdY][self.girdX].data.unit == 0) then
-                    self.world.tiles[self.girdY][self.girdX].data.unit = unit.new({x = self.world.tiles[self.girdY][self.girdX].girdX, y = self.world.tiles[self.girdY][self.girdX].girdY, world = World})  
+                    self.world.tiles[self.girdY][self.girdX].data.unit = unit.new({type = "basic", moveSpeed = unitTypes["basic"].moveSpeed, x = self.world.tiles[self.girdY][self.girdX].girdX, y = self.world.tiles[self.girdY][self.girdX].girdY, world = World})  
+                    if onlineGame == true then
+                        if (isHost == true) then
+                            for i = 1, #players do
+                                sendWorld(players[i].event)
+                            end
+                        else
+                            host:service(10)
+                            server:send("unit:"..self.world.tiles[self.girdY][self.girdX].girdX..":"..self.world.tiles[self.girdY][self.girdX].girdY..":".."basic"..";")
+                        end
+                    end
                 end
             end
         else

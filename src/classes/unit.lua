@@ -9,6 +9,8 @@ function unit.new(settings)
 
     self.world = settings.world
 
+    self.type = settings.type
+
     self.color = {1,0,0,1}
     self.x = self.girdX*((self.world.tileRadius/1.34)*self.world.tileSpacing) - self.world.tileRadius/2
     self.y = self.girdY*((self.world.tileInnerRadius)*self.world.tileSpacing)
@@ -16,7 +18,7 @@ function unit.new(settings)
         self.y = self.y - self.world.tileInnerRadius
     end
 
-    self.moveSpeed = 1
+    self.moveSpeed = settings.moveSpeed
     self.moved = false
 
     return self

@@ -16,6 +16,11 @@ function initGame(MapSize)
     NextPhase = nextPhase.new()
 end
 
+function initUnits()
+    unitTypes = {}
+    unitTypes["basic"] = {moveSpeed = 1}
+end
+
 --NETWORKING
 
 function sendWorld(event)
@@ -27,7 +32,12 @@ function sendWorld(event)
                 buildingType = World.tiles[y][x].data.building.type
             end
 
-            tileStringList = tileStringList..x..":"..y..":".."0"..":"..buildingType..";"
+            local unitType = 0
+            if (not (World.tiles[y][x].data.unit == 0)) then
+                unitType = World.tiles[y][x].data.unit.type
+            end
+
+            tileStringList = tileStringList..x..":"..y..":"..unitType..":"..buildingType..";"
         end
     end
     event.peer:send("MAP;"..tileStringList)
@@ -45,11 +55,11 @@ function decryptWorld(event)
         end
     end
     for i = 1, #netTiles-1 do
-        local lookingForList = {"x", "y", "unit", "buildingType"}
+        local lookingForList = {"x", "y", "unitType", "buildingType"}
         local lookingFor = 1
         local x = ""
         local y = ""
-        local unit = ""
+        local unitType = ""
         local buildingType = ""
         for k = 1, #netTiles[i] do
             if (netTiles[i]:sub(k, k) == ":") then
@@ -63,8 +73,8 @@ function decryptWorld(event)
                 if (lookingForList[lookingFor] == "y") then
                     y = y..netTiles[i]:sub(k, k)
                 end
-                if (lookingForList[lookingFor] == "unit") then
-                    unit = unit..netTiles[i]:sub(k, k)
+                if (lookingForList[lookingFor] == "unitType") then
+                    unitType = unitType..netTiles[i]:sub(k, k)
                 end
                 if (lookingForList[lookingFor] == "buildingType") then
                     buildingType = buildingType..netTiles[i]:sub(k, k)
@@ -74,6 +84,9 @@ function decryptWorld(event)
         World.tiles[tonumber(y)][tonumber(x)] = tile.new({x = tonumber(x), y = tonumber(y), world = World})
         if (not (buildingType == "0")) then
             World.tiles[tonumber(y)][tonumber(x)].data.building = building.new({type = buildingType, x = tonumber(x), y = tonumber(y), world = World})
+        end
+        if (not (unitType == "0")) then
+            World.tiles[tonumber(y)][tonumber(x)].data.unit = unit.new({type = unitType, moveSpeed = unitTypes[unitType].moveSpeed, x = tonumber(x), y = tonumber(y), world = World})
         end
     end
 end
@@ -102,6 +115,35 @@ function decryptBuild(event)
         end
     end
     World.tiles[tonumber(y)][tonumber(x)].data.building = building.new({type = buildingType, x = tonumber(x), y = tonumber(y), world = World})
+    for i = 1, #players do 
+        sendWorld(players[i].event)
+    end
+end
+
+function decryptUnit(event)
+    local lookingForList = {"x", "y", "unitType"}
+    local lookingFor = 1
+    local x = ""
+    local y = ""
+    local unitType = ""
+    for k = 6, #event.data do
+        if (event.data:sub(k, k) == ":") then
+            lookingFor = lookingFor + 1
+        elseif (event.data:sub(k, k) == ";") then
+            break
+        else
+            if (lookingForList[lookingFor] == "x") then
+                x = x..event.data:sub(k, k)
+            end
+            if (lookingForList[lookingFor] == "y") then
+                y = y..event.data:sub(k, k)
+            end
+            if (lookingForList[lookingFor] == "unitType") then
+                unitType = unitType..event.data:sub(k, k)
+            end
+        end
+    end
+    World.tiles[tonumber(y)][tonumber(x)].data.unit = unit.new({type = unitType, moveSpeed = unitTypes[unitType].moveSpeed, x = tonumber(x), y = tonumber(y), world = World})
     for i = 1, #players do 
         sendWorld(players[i].event)
     end
