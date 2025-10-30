@@ -23,6 +23,24 @@ end
 
 --NETWORKING
 
+function checkAllPlayersDone()
+    local allPlayersDone = true
+    for i = 1, #players do 
+        if (players[i].done == false) then
+            allPlayersDone = false
+            break
+        end
+    end
+
+    if ((allPlayersDone == true) and (Player.phases[Player.currentPhase] == "done"))then
+        for i = 1, #players do
+            players[i].event.peer:send("allPlayersDone")
+            players[i].done = false
+        end
+        Player.currentPhase = NextPhase.nextPhase
+    end
+end
+
 function sendWorld(event)
     tileStringList = ""
     for y = 1, World.MapSize do

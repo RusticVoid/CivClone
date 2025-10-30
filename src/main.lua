@@ -99,10 +99,13 @@ function love.update(dt)
         if (Player.phases[Player.currentPhase] == "done") then
             if onlineGame == true then
                 if (isHost == true) then
-                    
+                    checkAllPlayersDone()
                 else
-                    host:service(10)
-                    server:send("done")
+                    if (Player.doneSent == false) then
+                        host:service(10)
+                        server:send("done")
+                        Player.doneSent = true
+                    end
                 end
             end
         end
@@ -128,23 +131,7 @@ function love.update(dt)
                                     break
                                 end
                             end
-
-                            local allPlayersDone = true
-                            for i = 1, #players do 
-                                if (players[i].done == false) then
-                                    allPlayersDone = false
-                                    break
-                                end
-                            end
-                            if ((allPlayersDone == true) and (Player.phases[Player.currentPhase] == "done"))then
-                                for i = 1, #players do 
-                                    players[i].event.peer:send("allPlayersDone") -- find a way to fix this
-                                    players[i].event.peer:send("allPlayersDone") -- these are here bc it fixes "when every player is done it crashes server"
-                                    players[i].event.peer:send("allPlayersDone") -- the more players the more of these you need
-                                    players[i].event.peer:send("allPlayersDone")
-                                end
-                                Player.currentPhase = NextPhase.nextPhase
-                            end
+                            checkAllPlayersDone()
                         end
                     else
                         if (event.data:sub(1, 3) == "MAP") then
@@ -152,6 +139,7 @@ function love.update(dt)
                         elseif (event.data == "allPlayersDone") then
                             if (Player.phases[Player.currentPhase] == "done") then
                                 Player.currentPhase = NextPhase.nextPhase
+                                Player.doneSent = false
                             end
                         else
                             print("Got message: ", event.data, event.peer)

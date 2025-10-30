@@ -16,6 +16,8 @@ function player.new(settings)
         "done"
     }
 
+    self.doneSent = false
+
     return self
 end
 
