@@ -119,6 +119,8 @@ function love.update(dt)
                             decryptBuild(event)
                         elseif (event.data:sub(1, 4) == "unit") then
                             decryptUnit(event)
+                        elseif (event.data:sub(1, 9) == "movedUnit") then
+                            decryptMovedUnit(event)
                         elseif (event.data == "done") then
                             for i = 1, #players do 
                                 if (players[i].event.peer == event.peer) then
@@ -136,7 +138,9 @@ function love.update(dt)
                             end
                             if ((allPlayersDone == true) and (Player.phases[Player.currentPhase] == "done"))then
                                 for i = 1, #players do 
-                                    players[i].event.peer:send("allPlayersDone")
+                                    players[i].event.peer:send("allPlayersDone") -- find a way to fix this
+                                    players[i].event.peer:send("allPlayersDone") -- these are here bc it fixes "when every player is done it crashes server"
+                                    players[i].event.peer:send("allPlayersDone") -- the more players the more of these you need
                                     players[i].event.peer:send("allPlayersDone")
                                 end
                                 Player.currentPhase = NextPhase.nextPhase
