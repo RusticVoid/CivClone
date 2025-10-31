@@ -45,9 +45,12 @@ function sendWorld(event)
     tileStringList = ""
     for y = 1, World.MapSize do
         for x = 1, World.MapSize do
+
             local buildingType = 0
             local buildingProduced = 0
+            local buildingTeam = 0
             if (not (World.tiles[y][x].data.building == 0)) then
+                buildingTeam = World.tiles[y][x].data.building.team
                 buildingType = World.tiles[y][x].data.building.type
                 if (buildingType == "barracks") then
                     if (World.tiles[y][x].data.building.produced) then
@@ -58,14 +61,23 @@ function sendWorld(event)
 
             local unitType = 0
             local unitMoved = 0
+            local unitTeam = 0
             if (not (World.tiles[y][x].data.unit == 0)) then
+                unitTeam = World.tiles[y][x].data.unit.team
                 unitType = World.tiles[y][x].data.unit.type
                 if (World.tiles[y][x].data.unit.moved) then
                     unitMoved = 1
                 end
             end
 
-            tileStringList = tileStringList..x..":"..y..":"..unitType..":"..unitMoved..":"..buildingType..":"..buildingProduced..";"
+            local team = 0
+            for i = 1, #players do
+                if (players[i].event.peer == event.peer) then
+                    team = players[i].team
+                end
+            end
+
+            tileStringList = tileStringList..x..":"..y..":"..unitType..":"..unitMoved..":"..unitTeam..":"..buildingType..":"..buildingProduced..":"..buildingTeam..":"..team..";"
         end
     end
     event.peer:send("MAP;"..tileStringList)
@@ -83,14 +95,17 @@ function decryptWorld(event)
         end
     end
     for i = 1, #netTiles-1 do
-        local lookingForList = {"x", "y", "unitType", "unitMoved", "buildingType", "buildingProduced"}
+        local lookingForList = {"x", "y", "unitType", "unitMoved", "unitTeam", "buildingType", "buildingProduced", "buildingTeam", "team"}
         local lookingFor = 1
         local x = ""
         local y = ""
         local unitType = ""
         local unitMoved = ""
+        local unitTeam = ""
         local buildingType = ""
         local buildingProduced = ""
+        local buildingTeam = ""
+        local team = ""
         for k = 1, #netTiles[i] do
             if (netTiles[i]:sub(k, k) == ":") then
                 lookingFor = lookingFor + 1
@@ -103,11 +118,14 @@ function decryptWorld(event)
                 if (lookingForList[lookingFor] == "y") then
                     y = y..netTiles[i]:sub(k, k)
                 end
-                if (lookingForList[lookingFor] == "unitMoved") then
-                    unitMoved = unitMoved..netTiles[i]:sub(k, k)
-                end
                 if (lookingForList[lookingFor] == "unitType") then
                     unitType = unitType..netTiles[i]:sub(k, k)
+                end
+                if (lookingForList[lookingFor] == "unitTeam") then
+                    unitTeam = unitTeam..netTiles[i]:sub(k, k)
+                end
+                if (lookingForList[lookingFor] == "unitMoved") then
+                    unitMoved = unitMoved..netTiles[i]:sub(k, k)
                 end
                 if (lookingForList[lookingFor] == "buildingType") then
                     buildingType = buildingType..netTiles[i]:sub(k, k)
@@ -115,9 +133,16 @@ function decryptWorld(event)
                 if (lookingForList[lookingFor] == "buildingProduced") then
                     buildingProduced = buildingProduced..netTiles[i]:sub(k, k)
                 end
+                if (lookingForList[lookingFor] == "buildingTeam") then
+                    buildingTeam = buildingTeam..netTiles[i]:sub(k, k)
+                end
+                if (lookingForList[lookingFor] == "team") then
+                    team = team..netTiles[i]:sub(k, k)
+                end
             end
         end
         World.tiles[tonumber(y)][tonumber(x)] = tile.new({x = tonumber(x), y = tonumber(y), world = World})
+        Player.team = tonumber(team)
         if (not (buildingType == "0")) then
             World.tiles[tonumber(y)][tonumber(x)].data.building = building.new({type = buildingType, x = tonumber(x), y = tonumber(y), world = World})
             if (buildingType == "barracks") then
@@ -127,6 +152,7 @@ function decryptWorld(event)
                     World.tiles[tonumber(y)][tonumber(x)].data.building.produced = false
                 end
             end
+            World.tiles[tonumber(y)][tonumber(x)].data.building.team = tonumber(buildingTeam)
         end
         if (not (unitType == "0")) then
             World.tiles[tonumber(y)][tonumber(x)].data.unit = unit.new({type = unitType, moveSpeed = unitTypes[unitType].moveSpeed, x = tonumber(x), y = tonumber(y), world = World})
@@ -135,16 +161,18 @@ function decryptWorld(event)
             else
                 World.tiles[tonumber(y)][tonumber(x)].data.unit.moved = false
             end
+            World.tiles[tonumber(y)][tonumber(x)].data.unit.team = tonumber(unitTeam)
         end
     end
 end
 
 function decryptBuild(event)
-    local lookingForList = {"x", "y", "buildingType"}
+    local lookingForList = {"x", "y", "buildingType", "team"}
     local lookingFor = 1
     local x = ""
     local y = ""
     local buildingType = ""
+    local team = ""
     for k = 7, #event.data do
         if (event.data:sub(k, k) == ":") then
             lookingFor = lookingFor + 1
@@ -160,21 +188,26 @@ function decryptBuild(event)
             if (lookingForList[lookingFor] == "buildingType") then
                 buildingType = buildingType..event.data:sub(k, k)
             end
+            if (lookingForList[lookingFor] == "team") then
+                team = team..event.data:sub(k, k)
+            end
         end
     end
     World.tiles[tonumber(y)][tonumber(x)].data.building = building.new({type = buildingType, x = tonumber(x), y = tonumber(y), world = World})
+    World.tiles[tonumber(y)][tonumber(x)].data.building.team = tonumber(team)
     for i = 1, #players do 
         sendWorld(players[i].event)
     end
 end
 
-function decryptUnit(event)
-    local lookingForList = {"x", "y", "unitType"}
+function decryptMakeUnit(event)
+    local lookingForList = {"x", "y", "unitType", "team"}
     local lookingFor = 1
     local x = ""
     local y = ""
     local unitType = ""
-    for k = 6, #event.data do
+    local team = ""
+    for k = 10, #event.data do
         if (event.data:sub(k, k) == ":") then
             lookingFor = lookingFor + 1
         elseif (event.data:sub(k, k) == ";") then
@@ -189,44 +222,49 @@ function decryptUnit(event)
             if (lookingForList[lookingFor] == "unitType") then
                 unitType = unitType..event.data:sub(k, k)
             end
+            if (lookingForList[lookingFor] == "team") then
+                team = team..event.data:sub(k, k)
+            end
         end
     end
     World.tiles[tonumber(y)][tonumber(x)].data.unit = unit.new({type = unitType, moveSpeed = unitTypes[unitType].moveSpeed, x = tonumber(x), y = tonumber(y), world = World})
+    World.tiles[tonumber(y)][tonumber(x)].data.unit.team = tonumber(team)
+    World.tiles[tonumber(y)][tonumber(x)].data.building.produced = true
     for i = 1, #players do 
         sendWorld(players[i].event)
     end
 end
 
 function decryptMovedUnit(event)
-    local lookingForList = {"x", "y", "newx", "newy"}
+    local lookingForList = {"newx", "newy", "x", "y"}
     local lookingFor = 1
-    local x = ""
-    local y = ""
     local newx = ""
     local newy = ""
+    local x = ""
+    local y = ""
     for k = 11, #event.data do
         if (event.data:sub(k, k) == ":") then
             lookingFor = lookingFor + 1
         elseif (event.data:sub(k, k) == ";") then
             break
         else
-            if (lookingForList[lookingFor] == "x") then
-                x = x..event.data:sub(k, k)
-            end
-            if (lookingForList[lookingFor] == "y") then
-                y = y..event.data:sub(k, k)
-            end
             if (lookingForList[lookingFor] == "newx") then
                 newx = newx..event.data:sub(k, k)
             end
             if (lookingForList[lookingFor] == "newy") then
                 newy = newy..event.data:sub(k, k)
             end
+            if (lookingForList[lookingFor] == "x") then
+                x = x..event.data:sub(k, k)
+            end
+            if (lookingForList[lookingFor] == "y") then
+                y = y..event.data:sub(k, k)
+            end
         end
     end
 
     moveUnit(World.tiles[tonumber(newy)][tonumber(newx)], World.tiles[tonumber(y)][tonumber(x)])
-    for i = 1, #players do 
+    for i = 1, #players do
         sendWorld(players[i].event)
     end
 end

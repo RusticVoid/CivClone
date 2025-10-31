@@ -49,7 +49,13 @@ function love.update(dt)
             players = {}
         end
 
-        World.tiles[5][5].data.building = building.new({type = "city", x = 5, y = 5, world = World})
+        World.tiles[1][1].data.building = building.new({type = "city", x = 1, y = 1, world = World})
+        World.tiles[1][10].data.building = building.new({type = "city", x = 10, y = 1, world = World})
+        World.tiles[1][10].data.building.team = 1
+        World.tiles[10][1].data.building = building.new({type = "city", x = 1, y = 10, world = World})
+        World.tiles[10][1].data.building.team = 2
+        World.tiles[10][10].data.building = building.new({type = "city", x = 10, y = 10, world = World})
+        World.tiles[10][10].data.building.team = 3
 
         event = host:service(10)
 
@@ -58,9 +64,10 @@ function love.update(dt)
                 print("Got message: ", event.data, event.peer)
             elseif event.type == "connect" then
                 print(event.peer, "connected.")
-                players[#players+1] = {event, done}
+                players[#players+1] = {event, done, team}
                 players[#players].event = event
                 players[#players].done = false
+                players[#players].team = #players
             elseif event.type == "disconnect" then
                 print(event.peer, "disconnected.")
             end
@@ -120,8 +127,8 @@ function love.update(dt)
                             sendWorld(event)
                         elseif (event.data:sub(1, 5) == "build") then
                             decryptBuild(event)
-                        elseif (event.data:sub(1, 4) == "unit") then
-                            decryptUnit(event)
+                        elseif (event.data:sub(1, 8) == "makeUnit") then
+                            decryptMakeUnit(event)
                         elseif (event.data:sub(1, 9) == "movedUnit") then
                             decryptMovedUnit(event)
                         elseif (event.data == "done") then

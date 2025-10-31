@@ -78,16 +78,16 @@ function tile:draw()
                     if (getDistance(mouseX, mouseY, self.x, self.y) < self.world.tileInnerRadius) then
                         if ((not (Player.selectedTile.data.unit == 0)) and (Player.selectedTile.data.unit.moved == false)) then
                             if (self.highlight == true) then
-                                
-                                moveUnit(self, Player.selectedTile)
-
-                                if (isHost == true) then
-                                    for i = 1, #players do
-                                        sendWorld(players[i].event)
+                                if (Player.selectedTile.data.unit.team == Player.team) then
+                                    moveUnit(self, Player.selectedTile)
+                                    if (isHost == true) then
+                                        for i = 1, #players do
+                                            sendWorld(players[i].event)
+                                        end
+                                    else
+                                        host:service(10)
+                                        server:send("movedUnit:"..self.girdX..":"..self.girdY..":"..Player.selectedTile.girdX..":"..Player.selectedTile.girdY..";")
                                     end
-                                else
-                                    host:service(10)
-                                    server:send("movedUnit:"..Player.selectedTile.girdX..":"..Player.selectedTile.girdY..":"..self.girdX..":"..self.girdY..";")
                                 end
                             end
                         end

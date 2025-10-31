@@ -17,6 +17,7 @@ function player.new(settings)
     }
 
     self.doneSent = false
+    self.team = 0
 
     return self
 end

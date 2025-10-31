@@ -21,6 +21,8 @@ function unit.new(settings)
     self.moveSpeed = settings.moveSpeed
     self.moved = false
 
+    self.team = 0
+
     return self
 end
 
@@ -46,4 +48,7 @@ function unit:draw()
         love.graphics.setColor(1,1,0)
         love.graphics.circle('line', self.x, self.y, self.world.tileInnerRadius/3)
     end
+
+    love.graphics.setColor(1,1,1)
+    love.graphics.print(self.team, self.x, self.y)
 end

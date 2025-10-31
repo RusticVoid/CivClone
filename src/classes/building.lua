@@ -23,6 +23,8 @@ function building.new(settings)
         self.produced = false
     end
 
+    self.team = 0
+
     return self
 end
 
@@ -34,27 +36,29 @@ function building:update(dt)
     end
 
     if (self.type == "barracks") then
-        if self.produced == false then
-            if (Player.phases[Player.currentPhase] == "move") then
-                self.produced = true
+        if (self.team == Player.team) then
+            if self.produced == false then
+                if (Player.phases[Player.currentPhase] == "move") then
+                    self.produced = true
 
-                if (self.world.tiles[self.girdY][self.girdX].data.unit == 0) then
-                    self.world.tiles[self.girdY][self.girdX].data.unit = unit.new({type = "basic", moveSpeed = unitTypes["basic"].moveSpeed, x = self.world.tiles[self.girdY][self.girdX].girdX, y = self.world.tiles[self.girdY][self.girdX].girdY, world = World})  
-                    if onlineGame == true then
-                        if (isHost == true) then
-                            for i = 1, #players do
-                                sendWorld(players[i].event)
+                    if (self.world.tiles[self.girdY][self.girdX].data.unit == 0) then
+                        if onlineGame == true then
+                            self.world.tiles[self.girdY][self.girdX].data.unit = unit.new({type = "basic", moveSpeed = unitTypes["basic"].moveSpeed, x = self.world.tiles[self.girdY][self.girdX].girdX, y = self.world.tiles[self.girdY][self.girdX].girdY, world = World})  
+                            if (isHost == true) then 
+                                for i = 1, #players do
+                                   sendWorld(players[i].event)
+                                end
+                            else
+                                host:service(10)
+                                server:send("makeUnit:"..self.world.tiles[self.girdY][self.girdX].girdX..":"..self.world.tiles[self.girdY][self.girdX].girdY..":".."basic"..":"..Player.team..";")
                             end
-                        else
-                            host:service(10)
-                            server:send("unit:"..self.world.tiles[self.girdY][self.girdX].girdX..":"..self.world.tiles[self.girdY][self.girdX].girdY..":".."basic"..";")
                         end
                     end
                 end
-            end
-        else
-            if (Player.phases[Player.currentPhase] == "done") then
-                self.produced = false
+            else
+                if (Player.phases[Player.currentPhase] == "done") then
+                    self.produced = false
+                end
             end
         end
     end
@@ -63,4 +67,7 @@ end
 function building:draw()
     love.graphics.setColor(self.color)
     love.graphics.circle('fill', self.x, self.y, self.world.tileInnerRadius/2)
+    
+    love.graphics.setColor(1,1,1)
+    love.graphics.print(self.team, self.x, self.y)
 end
