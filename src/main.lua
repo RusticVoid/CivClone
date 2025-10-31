@@ -131,6 +131,8 @@ function love.update(dt)
                             decryptMakeUnit(event)
                         elseif (event.data:sub(1, 9) == "movedUnit") then
                             decryptMovedUnit(event)
+                        elseif (event.data:sub(1, 14) == "updateCoolDown") then
+                            decryptUpdateCoolDown(event)
                         elseif (event.data == "done") then
                             for i = 1, #players do 
                                 if (players[i].event.peer == event.peer) then

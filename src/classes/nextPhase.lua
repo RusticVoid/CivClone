@@ -13,7 +13,8 @@ function nextPhase.new()
     self.width = font:getWidth(Player.phases[Player.currentPhase].."->"..Player.phases[self.nextPhase])
     self.height = font:getHeight()
 
-    self.coolDown = 1
+    self.coolDown = 0.1
+    self.maxCoolDown = 0.1
 
     return self
 end
@@ -47,7 +48,7 @@ function nextPhase:draw()
         love.graphics.print(Player.phases[Player.currentPhase].."->"..Player.phases[self.nextPhase], self.x, self.y)
         if (isMouseOver(self.x, self.y, self.width, self.height)) then
             if ((love.mouse.isDown(1)) and (self.coolDown < 0)) then
-                self.coolDown = 1
+                self.coolDown = self.maxCoolDown
                 Player.currentPhase = self.nextPhase
             end
         end

@@ -49,12 +49,18 @@ function sendWorld(event)
             local buildingType = 0
             local buildingProduced = 0
             local buildingTeam = 0
+            local buildingCooldown = 0
+            local buildingCooldownDone = 0
             if (not (World.tiles[y][x].data.building == 0)) then
                 buildingTeam = World.tiles[y][x].data.building.team
                 buildingType = World.tiles[y][x].data.building.type
                 if (buildingType == "barracks") then
                     if (World.tiles[y][x].data.building.produced) then
                         buildingProduced = 1
+                    end
+                    buildingCooldown = World.tiles[y][x].data.building.coolDown
+                    if (World.tiles[y][x].data.building.coolDownDone) then
+                        buildingCooldownDone = 1
                     end
                 end
             end
@@ -77,7 +83,7 @@ function sendWorld(event)
                 end
             end
 
-            tileStringList = tileStringList..x..":"..y..":"..unitType..":"..unitMoved..":"..unitTeam..":"..buildingType..":"..buildingProduced..":"..buildingTeam..":"..team..";"
+            tileStringList = tileStringList..x..":"..y..":"..unitType..":"..unitMoved..":"..unitTeam..":"..buildingType..":"..buildingProduced..":"..buildingCooldown..":"..buildingCooldownDone..":"..buildingTeam..":"..team..";"
         end
     end
     event.peer:send("MAP;"..tileStringList)
@@ -95,7 +101,7 @@ function decryptWorld(event)
         end
     end
     for i = 1, #netTiles-1 do
-        local lookingForList = {"x", "y", "unitType", "unitMoved", "unitTeam", "buildingType", "buildingProduced", "buildingTeam", "team"}
+        local lookingForList = {"x", "y", "unitType", "unitMoved", "unitTeam", "buildingType", "buildingProduced", "buildingCooldown", "buildingCooldownDone", "buildingTeam", "team"}
         local lookingFor = 1
         local x = ""
         local y = ""
@@ -104,6 +110,8 @@ function decryptWorld(event)
         local unitTeam = ""
         local buildingType = ""
         local buildingProduced = ""
+        local buildingCooldown = ""
+        local buildingCooldownDone = ""
         local buildingTeam = ""
         local team = ""
         for k = 1, #netTiles[i] do
@@ -133,6 +141,12 @@ function decryptWorld(event)
                 if (lookingForList[lookingFor] == "buildingProduced") then
                     buildingProduced = buildingProduced..netTiles[i]:sub(k, k)
                 end
+                if (lookingForList[lookingFor] == "buildingCooldown") then
+                    buildingCooldown = buildingCooldown..netTiles[i]:sub(k, k)
+                end
+                if (lookingForList[lookingFor] == "buildingCooldownDone") then
+                    buildingCooldownDone = buildingCooldownDone..netTiles[i]:sub(k, k)
+                end
                 if (lookingForList[lookingFor] == "buildingTeam") then
                     buildingTeam = buildingTeam..netTiles[i]:sub(k, k)
                 end
@@ -146,10 +160,16 @@ function decryptWorld(event)
         if (not (buildingType == "0")) then
             World.tiles[tonumber(y)][tonumber(x)].data.building = building.new({type = buildingType, x = tonumber(x), y = tonumber(y), world = World})
             if (buildingType == "barracks") then
+                World.tiles[tonumber(y)][tonumber(x)].data.building.coolDown = tonumber(buildingCooldown)
                 if (buildingProduced == "1") then
                     World.tiles[tonumber(y)][tonumber(x)].data.building.produced = true
                 else
                     World.tiles[tonumber(y)][tonumber(x)].data.building.produced = false
+                end
+                if (buildingCooldownDone == "1") then
+                    World.tiles[tonumber(y)][tonumber(x)].data.building.coolDownDone = true
+                else
+                    World.tiles[tonumber(y)][tonumber(x)].data.building.coolDownDone = false
                 end
             end
             World.tiles[tonumber(y)][tonumber(x)].data.building.team = tonumber(buildingTeam)
@@ -201,11 +221,12 @@ function decryptBuild(event)
 end
 
 function decryptMakeUnit(event)
-    local lookingForList = {"x", "y", "unitType", "team"}
+    local lookingForList = {"x", "y", "unitType", "coolDown", "team"}
     local lookingFor = 1
     local x = ""
     local y = ""
     local unitType = ""
+    local coolDown = ""
     local team = ""
     for k = 10, #event.data do
         if (event.data:sub(k, k) == ":") then
@@ -222,6 +243,9 @@ function decryptMakeUnit(event)
             if (lookingForList[lookingFor] == "unitType") then
                 unitType = unitType..event.data:sub(k, k)
             end
+            if (lookingForList[lookingFor] == "coolDown") then
+                coolDown = coolDown..event.data:sub(k, k)
+            end
             if (lookingForList[lookingFor] == "team") then
                 team = team..event.data:sub(k, k)
             end
@@ -229,7 +253,41 @@ function decryptMakeUnit(event)
     end
     World.tiles[tonumber(y)][tonumber(x)].data.unit = unit.new({type = unitType, moveSpeed = unitTypes[unitType].moveSpeed, x = tonumber(x), y = tonumber(y), world = World})
     World.tiles[tonumber(y)][tonumber(x)].data.unit.team = tonumber(team)
+    World.tiles[tonumber(y)][tonumber(x)].data.building.coolDown = tonumber(coolDown)
     World.tiles[tonumber(y)][tonumber(x)].data.building.produced = true
+    for i = 1, #players do 
+        sendWorld(players[i].event)
+    end
+end
+
+function decryptUpdateCoolDown(event)
+    local lookingForList = {"x", "y", "coolDown"}
+    local lookingFor = 1
+    local x = ""
+    local y = ""
+    local coolDown = ""
+    for k = 16, #event.data do
+        if (event.data:sub(k, k) == ":") then
+            lookingFor = lookingFor + 1
+        elseif (event.data:sub(k, k) == ";") then
+            break
+        else
+            if (lookingForList[lookingFor] == "x") then
+                x = x..event.data:sub(k, k)
+            end
+            if (lookingForList[lookingFor] == "y") then
+                y = y..event.data:sub(k, k)
+            end
+            if (lookingForList[lookingFor] == "coolDown") then
+                coolDown = coolDown..event.data:sub(k, k)
+            end
+        end
+    end
+    World.tiles[tonumber(y)][tonumber(x)].data.building.coolDown = tonumber(coolDown)
+    World.tiles[tonumber(y)][tonumber(x)].data.building.coolDownDone = true
+    if (World.tiles[tonumber(y)][tonumber(x)].data.building.coolDown == 0) then
+        World.tiles[tonumber(y)][tonumber(x)].data.building.produced = false
+    end
     for i = 1, #players do 
         sendWorld(players[i].event)
     end

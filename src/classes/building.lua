@@ -21,6 +21,9 @@ function building.new(settings)
     if (self.type == "barracks") then
         self.color = {1,0.5,0.5}
         self.produced = false
+        self.coolDown = 0
+        self.maxCoolDown = 3
+        self.coolDownDone = false
     end
 
     self.team = 0
@@ -40,6 +43,7 @@ function building:update(dt)
             if self.produced == false then
                 if (Player.phases[Player.currentPhase] == "move") then
                     self.produced = true
+                    self.coolDown = self.maxCoolDown
 
                     if (self.world.tiles[self.girdY][self.girdX].data.unit == 0) then
                         if onlineGame == true then
@@ -50,14 +54,30 @@ function building:update(dt)
                                 end
                             else
                                 host:service(10)
-                                server:send("makeUnit:"..self.world.tiles[self.girdY][self.girdX].girdX..":"..self.world.tiles[self.girdY][self.girdX].girdY..":".."basic"..":"..Player.team..";")
+                                server:send("makeUnit:"..self.world.tiles[self.girdY][self.girdX].girdX..":"..self.world.tiles[self.girdY][self.girdX].girdY..":".."basic"..":"..self.coolDown..":"..Player.team..";")
                             end
                         end
                     end
                 end
             else
                 if (Player.phases[Player.currentPhase] == "done") then
-                    self.produced = false
+                    if (self.coolDownDone == false) then
+                        self.coolDown = self.coolDown - 1
+                        if (isHost == true) then 
+                            for i = 1, #players do
+                                sendWorld(players[i].event)
+                            end
+                        else
+                            host:service(10)
+                            server:send("updateCoolDown:"..self.world.tiles[self.girdY][self.girdX].girdX..":"..self.world.tiles[self.girdY][self.girdX].girdY..":"..self.coolDown..";")
+                        end
+                        if (self.coolDown == 0) then
+                            self.produced = false
+                        end
+                        self.coolDownDone = true
+                    end
+                elseif (Player.phases[Player.currentPhase] == "move") then
+                    self.coolDownDone = false
                 end
             end
         end
@@ -68,6 +88,8 @@ function building:draw()
     love.graphics.setColor(self.color)
     love.graphics.circle('fill', self.x, self.y, self.world.tileInnerRadius/2)
     
-    love.graphics.setColor(1,1,1)
-    love.graphics.print(self.team, self.x, self.y)
+    if (self.type == "barracks") then
+        love.graphics.setColor(1,1,1)
+        love.graphics.print(self.coolDown, self.x, self.y)
+    end
 end
